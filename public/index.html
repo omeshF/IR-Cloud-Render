@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CorpPortal — Render IR Lab</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0d0d;--surface:#111;--b:#222;--b2:#2a2a2a;--text:#e0e0e0;--muted:#6b7280;
+  --green:#4ade80;--red:#f87171;--yellow:#facc15;--blue:#60a5fa;--accent:#1d4ed8}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+#hud{position:fixed;top:0;left:0;right:0;height:54px;background:#0a0a0a;
+  border-bottom:1px solid var(--b);display:flex;align-items:center;
+  justify-content:space-between;padding:0 20px;z-index:200}
+#clock{font-size:26px;font-weight:700;font-family:monospace;color:var(--green);transition:color .3s}
+#clock.warn{color:var(--yellow)}#clock.crit{color:var(--red)}
+#pbar{position:fixed;top:54px;left:0;height:3px;background:var(--green);
+  transition:width 1s linear,background .3s;z-index:200}
+.hud-label{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.hud-btns{display:flex;gap:8px}
+
+.wrap{max-width:920px;margin:0 auto;padding:74px 20px 40px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+
+.card{background:var(--surface);border:1px solid var(--b2);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.card-head{padding:11px 18px;background:#161616;border-bottom:1px solid var(--b);
+  display:flex;justify-content:space-between;align-items:center}
+.card-head h3{font-size:13px;font-weight:500;color:var(--muted)}
+.card-body{padding:18px}
+.tag{font-size:10px;padding:1px 8px;border-radius:10px;background:#1c1917;color:#a16207;border:1px solid #292524}
+.tag-blue{background:#0c1a2e;color:#60a5fa;border-color:#1e3a5f}
+
+.field{margin-bottom:10px}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+input[type=text],input[type=email],input[type=password],input[type=number]{
+  width:100%;background:#0a0a0a;border:1px solid #333;color:var(--text);
+  padding:8px 11px;border-radius:6px;font-size:13px;font-family:inherit}
+input:focus{outline:none;border-color:#555}
+.btn{display:inline-block;padding:8px 18px;border-radius:6px;font-size:13px;
+  font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:background .15s}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#1e40af}
+.btn-ghost{background:transparent;border:1px solid var(--b2);color:var(--muted)}.btn-ghost:hover{background:#1a1a1a}
+.btn-danger{background:#7f1d1d;color:#fca5a5}.btn-danger:hover{background:#991b1b}
+.btn-warn{background:#78350f;color:#fde68a}.btn-warn:hover{background:#92400e}
+.btn-sm{padding:5px 12px;font-size:12px}
+.row{display:flex;gap:8px;align-items:center}.row input{margin:0;flex:1}
+
+.rbox{background:#0a0a0a;border:1px solid var(--b);border-radius:6px;padding:11px;
+  margin-top:10px;font-family:monospace;font-size:11px;color:var(--green);
+  white-space:pre-wrap;max-height:220px;overflow-y:auto;display:none}
+.rbox.err{color:var(--red)}.rbox.info{color:var(--blue)}
+.hint{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic}
+
+.ebox{background:#0a0a0a;border:1px solid var(--b);border-radius:6px;padding:11px;
+  font-family:monospace;font-size:11px;color:var(--green);white-space:pre-wrap;
+  min-height:100px;max-height:340px;overflow-y:auto}
+
+.checks{list-style:none}
+.checks li{display:flex;align-items:flex-start;gap:10px;padding:7px 0;
+  border-bottom:1px solid #1a1a1a;font-size:13px;color:var(--muted);cursor:pointer}
+.checks li:hover{color:var(--text)}.checks li.done{color:var(--green);text-decoration:line-through}
+.cb{width:15px;height:15px;border:1px solid #444;border-radius:3px;flex-shrink:0;margin-top:1px}
+.checks li.done .cb{background:var(--green);border-color:var(--green)}
+
+.alert{background:#1c0a0a;border:1px solid #7f1d1d;border-radius:8px;padding:18px 22px;margin-bottom:20px}
+.alert h1{color:#fca5a5;font-size:17px;margin-bottom:6px}
+.alert p{color:#9ca3af;font-size:13px;line-height:1.6}
+
+.diff-box{background:#111;border:1px solid var(--b2);border-radius:8px;padding:16px 20px;margin-bottom:20px}
+.diff-box h2{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.diff-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.diff-col h3{font-size:12px;color:var(--blue);margin-bottom:6px}
+.diff-col ul{padding-left:16px}
+.diff-col li{font-size:12px;color:#d1d5db;line-height:1.8}
+
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.metric{background:#161616;border-radius:6px;padding:12px;text-align:center}
+.metric-v{font-size:22px;font-weight:700}.metric-l{font-size:11px;color:var(--muted);margin-top:2px}
+
+.tabs{display:flex;gap:4px;margin-bottom:16px}
+.tab{padding:7px 16px;border-radius:6px;font-size:13px;cursor:pointer;
+  border:1px solid var(--b2);color:var(--muted);background:transparent}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.diff-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;
+  margin-left:6px;background:#0c2a1c;color:#4ade80;border:1px solid #14532d}
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div>
+    <div class="hud-label">Incident Response Timer</div>
+    <div id="clock">25:00</div>
+  </div>
+  <div style="text-align:right">
+    <div class="hud-label" style="margin-bottom:4px">CorpPortal — Render Server <span class="diff-badge">persistent</span></div>
+    <div class="hud-btns">
+      <button class="btn btn-ghost btn-sm" onclick="resetTimer()">Reset</button>
+      <button class="btn btn-primary btn-sm" id="tbtn" onclick="toggleTimer()">Start</button>
+    </div>
+  </div>
+</div>
+<div id="pbar" style="width:100%"></div>
+
+<div class="wrap">
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('portal',this)">Corp Portal</div>
+    <div class="tab"        onclick="showTab('ir',this)">IR Console</div>
+    <div class="tab"        onclick="showTab('diff',this)">Vercel vs Render</div>
+  </div>
+
+  <!-- ══ PORTAL TAB ══ -->
+  <div id="tab-portal">
+    <div class="grid">
+      <div class="card">
+        <div class="card-head"><h3>Login <span class="tag">POST /api/login</span></h3></div>
+        <div class="card-body">
+          <div class="field"><label>Username</label><input type="text" id="l-user" placeholder="admin"></div>
+          <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="password"></div>
+          <button class="btn btn-primary" onclick="doLogin()">Sign in</button>
+          <p class="hint">Check the response debug field. Check the response headers too.</p>
+          <div class="rbox" id="l-box"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Register <span class="tag">POST /api/register</span></h3></div>
+        <div class="card-body">
+          <div class="field"><label>Username</label><input type="text" id="r-user" placeholder="newuser"></div>
+          <div class="field"><label>Email</label><input type="email" id="r-email" placeholder="you@example.com"></div>
+          <div class="field"><label>Password</label><input type="password" id="r-pass" placeholder="choose a password"></div>
+          <button class="btn btn-primary" onclick="doRegister()">Create account</button>
+          <p class="hint">What is returned in the response body after registration?</p>
+          <div class="rbox" id="r-box"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>User profile <span class="tag">GET /api/profile?id=</span> <span class="tag-blue">no auth required</span></h3></div>
+      <div class="card-body">
+        <div class="row">
+          <input type="number" id="p-id" placeholder="Try IDs 1 through 4" min="1">
+          <button class="btn btn-primary" onclick="doProfile()">Fetch</button>
+        </div>
+        <p class="hint">No authentication required. ID 4 contains something interesting.</p>
+        <div class="rbox" id="p-box"></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-head"><h3>Active sessions <span class="tag">GET /api/sessions</span></h3></div>
+        <div class="card-body">
+          <button class="btn btn-warn" onclick="doSessions()">View all sessions</button>
+          <p class="hint">Shows all logged-in users and their tokens. No auth needed.</p>
+          <div class="rbox info" id="s-box"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>Server info <span class="tag">GET /api/info</span></h3></div>
+        <div class="card-body">
+          <button class="btn btn-warn" onclick="doInfo()">Get server info</button>
+          <p class="hint">Returns PID, memory, uptime, Node version, environment.</p>
+          <div class="rbox info" id="i-box"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Audit log <span class="tag">GET /api/audit</span></h3></div>
+      <div class="card-body">
+        <button class="btn btn-danger" onclick="doAudit()">Access /api/audit</button>
+        <p class="hint">Unlike Vercel, this log persists for the life of the server — every action since boot.</p>
+        <div class="rbox info" id="a-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ IR CONSOLE TAB ══ -->
+  <div id="tab-ir" style="display:none">
+    <div class="alert">
+      <h1>⚠ Security Incident — Persistent Server Compromise</h1>
+      <p>Unlike the serverless lab, this server has been running continuously. The audit log contains a full history of every request since the server started. An unknown actor accessed sensitive endpoints 47 minutes ago. The server is still running — the logs are intact. Investigate before the attacker returns.</p>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><div class="metric-v" id="m-req" style="color:var(--blue)">0</div><div class="metric-l">Requests made</div></div>
+      <div class="metric"><div class="metric-v" id="m-fail" style="color:var(--red)">0</div><div class="metric-l">Failed logins</div></div>
+      <div class="metric"><div class="metric-v" id="m-idor" style="color:var(--yellow)">0</div><div class="metric-l">IDOR probes</div></div>
+      <div class="metric"><div class="metric-v" id="m-tasks" style="color:var(--green)">0/8</div><div class="metric-l">Tasks done</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Investigation checklist</h3></div>
+      <div class="card-body">
+        <ul class="checks" id="checklist">
+          <li onclick="tick(this)"><div class="cb"></div><span>Access /api/info — record Node version, PID, uptime</span></li>
+          <li onclick="tick(this)"><div class="cb"></div><span>Attempt login with wrong credentials — note verbose error and attempt counter</span></li>
+          <li onclick="tick(this)"><div class="cb"></div><span>Brute force login 5+ times — confirm no lockout</span></li>
+          <li onclick="tick(this)"><div class="cb"></div><span>Login successfully as admin — find the session secret in debug response</span></li>
+          <li onclick="tick(this)"><div class="cb"></div><span>Access /api/profile for IDs 1–4 — collect SSN from each record</span></li>
+          <li onclick="tick(this)"><div class="cb"></div><span>Access /api/sessions — read all active session tokens without auth</span></li>
+          <li onclick="tick(this)"><div class="cb"></div><span>Access /api/audit — read full server history since boot</span></li>
+          <li onclick="tick(this)"><div class="cb"></div><span>Export evidence and write incident summary</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Evidence log</h3>
+        <div>
+          <button class="btn btn-ghost btn-sm" onclick="clearEvidence()">Clear</button>
+          <button class="btn btn-primary btn-sm" style="margin-left:6px" onclick="exportEvidence()">Export .txt</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="ebox" id="elog"># IR Evidence Log — Render Persistent Server
+# All API interactions recorded automatically
+# Start the timer and begin your investigation
+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ VERCEL vs RENDER TAB ══ -->
+  <div id="tab-diff" style="display:none">
+    <div class="diff-box">
+      <h2>Key differences for incident response</h2>
+      <div class="diff-row">
+        <div class="diff-col">
+          <h3>Vercel — Serverless</h3>
+          <ul>
+            <li>Logs are ephemeral — lost on cold start</li>
+            <li>No persistent state between requests</li>
+            <li>Each function runs in isolation</li>
+            <li>IR must collect logs immediately</li>
+            <li>Cannot track login attempts across calls</li>
+            <li>Harder to correlate events over time</li>
+          </ul>
+        </div>
+        <div class="diff-col">
+          <h3>Render — Persistent server</h3>
+          <ul>
+            <li>Logs survive for the life of the process</li>
+            <li>In-memory state accumulates over time</li>
+            <li>Session store grows until restart</li>
+            <li>Full attack history available</li>
+            <li>Can track brute force across attempts</li>
+            <li>Richer timeline reconstruction possible</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Unique to Render — persistent endpoints</h3></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          These endpoints expose data that only exists because the server has been running continuously.
+          On Vercel they would return empty results on every cold start.
+        </p>
+        <button class="btn btn-warn" style="margin-right:8px" onclick="doSessions()">GET /api/sessions</button>
+        <button class="btn btn-warn" style="margin-right:8px" onclick="doInfo()">GET /api/info</button>
+        <button class="btn btn-danger" onclick="doAudit()">GET /api/audit</button>
+        <div class="rbox info" id="diff-box" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Timer ─────────────────────────────────────────
+const TOTAL=25*60;let remaining=TOTAL,running=false,iv=null;
+function pad(n){return String(n).padStart(2,'0')}
+function drawTimer(){
+  const m=Math.floor(remaining/60),s=remaining%60;
+  const el=document.getElementById('clock');
+  el.textContent=pad(m)+':'+pad(s);
+  el.className=remaining<300?'crit':remaining<600?'warn':'';
+  const pb=document.getElementById('pbar');
+  const pct=(remaining/TOTAL)*100;
+  pb.style.width=pct+'%';
+  pb.style.background=remaining<300?'#f87171':remaining<600?'#facc15':'#4ade80';
+}
+function toggleTimer(){
+  running=!running;
+  document.getElementById('tbtn').textContent=running?'Pause':'Resume';
+  if(running){iv=setInterval(()=>{if(remaining>0){remaining--;drawTimer();}else{clearInterval(iv);running=false;document.getElementById('tbtn').textContent='Start';}},1000);}
+  else clearInterval(iv);
+}
+function resetTimer(){clearInterval(iv);running=false;remaining=TOTAL;document.getElementById('tbtn').textContent='Start';drawTimer();}
+drawTimer();
+
+// ── Tabs ──────────────────────────────────────────
+function showTab(name,el){
+  ['portal','ir','diff'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'':'none');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── Metrics ───────────────────────────────────────
+let counts={req:0,fail:0,idor:0,tasks:0};
+function bump(k){if(k!=='tasks')counts[k]++;document.getElementById('m-'+k).textContent=counts[k];}
+function updateTasks(){document.getElementById('m-tasks').textContent=counts.tasks+'/8';}
+
+// ── Evidence ─────────────────────────────────────
+function addEvidence(type,detail){
+  const now=new Date();
+  const ts=[now.getHours(),now.getMinutes(),now.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+  const box=document.getElementById('elog');
+  box.textContent+=`\n[${ts}] ${type}\n         ${detail}`;
+  box.scrollTop=box.scrollHeight;
+  counts.req++;document.getElementById('m-req').textContent=counts.req;
+}
+function clearEvidence(){document.getElementById('elog').textContent='# IR Evidence Log — Render Persistent Server\n';}
+function exportEvidence(){
+  const blob=new Blob([document.getElementById('elog').textContent],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='render-ir-evidence-'+Date.now()+'.txt';a.click();
+}
+
+// ── Checklist ────────────────────────────────────
+function tick(li){
+  const wasDone=li.classList.contains('done');
+  li.classList.toggle('done');
+  if(!wasDone){counts.tasks++;addEvidence('TASK COMPLETE',li.querySelector('span').textContent);}
+  else counts.tasks--;
+  updateTasks();
+}
+
+// ── Show response ────────────────────────────────
+function show(id,text,isErr){
+  const b=document.getElementById(id);
+  if(!b)return;
+  b.style.display='block';b.textContent=text;
+  b.className='rbox'+(isErr?' err':b.id==='s-box'||b.id==='a-box'||b.id==='i-box'||b.id==='diff-box'?' info':'');
+}
+
+// ── API calls ────────────────────────────────────
+async function doLogin(){
+  const u=document.getElementById('l-user').value;
+  const p=document.getElementById('l-pass').value;
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json();
+    show('l-box','HTTP '+r.status+'\nHeaders: X-Powered-By='+r.headers.get('X-Powered-By')+' X-Server-Version='+r.headers.get('X-Server-Version')+'\n\n'+JSON.stringify(d,null,2),!r.ok);
+    if(!r.ok){counts.fail++;document.getElementById('m-fail').textContent=counts.fail;addEvidence('LOGIN FAIL','user='+u+' attempts='+d.attempts+' error='+d.error);}
+    else addEvidence('LOGIN SUCCESS','user='+u+' role='+d.user?.role+'\n         token='+d.token+'\n         debug.allUsernames='+JSON.stringify(d.debug?.allUsernames));
+  }catch(e){show('l-box','Error: '+e.message,true);}
+}
+
+async function doRegister(){
+  const u=document.getElementById('r-user').value;
+  const e=document.getElementById('r-email').value;
+  const p=document.getElementById('r-pass').value;
+  try{
+    const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,email:e,password:p})});
+    const d=await r.json();
+    show('r-box','HTTP '+r.status+'\n'+JSON.stringify(d,null,2),!r.ok);
+    addEvidence('REGISTER','user='+u+' password_in_response='+d.user?.password+' status='+r.status);
+  }catch(e){show('r-box','Error: '+e.message,true);}
+}
+
+async function doProfile(){
+  const id=document.getElementById('p-id').value;
+  try{
+    const r=await fetch('/api/profile?id='+encodeURIComponent(id));
+    const d=await r.json();
+    show('p-box','HTTP '+r.status+'\n'+JSON.stringify(d,null,2),!r.ok);
+    if(r.ok){counts.idor++;document.getElementById('m-idor').textContent=counts.idor;addEvidence('IDOR PROBE','id='+id+' user='+d.username+' password='+d.password+' ssn='+d.ssn+' salary='+d.salary);}
+  }catch(e){show('p-box','Error: '+e.message,true);}
+}
+
+async function doSessions(){
+  try{
+    const r=await fetch('/api/sessions');
+    const d=await r.json();
+    const target=document.getElementById('s-box')||document.getElementById('diff-box');
+    show(target.id,'HTTP '+r.status+'\n'+JSON.stringify(d,null,2),false);
+    addEvidence('SESSIONS ACCESSED','active_sessions='+Object.keys(d.sessions||{}).length+' — all tokens visible without auth');
+  }catch(e){console.error(e);}
+}
+
+async function doInfo(){
+  try{
+    const r=await fetch('/api/info');
+    const d=await r.json();
+    const target=document.getElementById('i-box')||document.getElementById('diff-box');
+    show(target.id,'HTTP '+r.status+'\n'+JSON.stringify(d,null,2),false);
+    addEvidence('SERVER INFO','pid='+d.pid+' uptime='+d.uptime+' node='+d.node+' memory='+JSON.stringify(d.memory));
+  }catch(e){console.error(e);}
+}
+
+async function doAudit(){
+  try{
+    const r=await fetch('/api/audit');
+    const d=await r.json();
+    const target=document.getElementById('a-box')||document.getElementById('diff-box');
+    show(target.id,'HTTP '+r.status+'\n'+JSON.stringify(d,null,2),false);
+    addEvidence('AUDIT LOG ACCESSED','total_entries='+d.totalEntries+' server_uptime='+d.serverUptime+' — full history exposed without auth');
+  }catch(e){console.error(e);}
+}
+</script>
+</body>
+</html>
