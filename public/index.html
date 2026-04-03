@@ -310,6 +310,13 @@ async function doAudit() {
 async function simulateFullAttack() {
   addEvidence('ATTACK SIMULATION', 'Malware attack triggered');
   
+  const resultBox = document.getElementById('attack-result');
+  if (resultBox) {
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = 'Executing attack simulation...';
+    resultBox.className = 'rbox info';
+  }
+  
   try {
     const response = await fetch('/api/attack', {
       method: 'POST',
@@ -375,9 +382,7 @@ async function simulateFullAttack() {
       }
     }
     
-    const resultBox = document.getElementById('attack-result');
     if (resultBox) {
-      resultBox.style.display = 'block';
       resultBox.innerHTML = 'Attack completed successfully. Check the Evidence Log for details.';
       resultBox.className = 'rbox success';
       setTimeout(function() {
@@ -393,6 +398,10 @@ async function simulateFullAttack() {
     
   } catch (error) {
     addEvidence('ATTACK FAILED', 'Error: ' + error.message);
+    if (resultBox) {
+      resultBox.innerHTML = 'Error: ' + error.message;
+      resultBox.className = 'rbox err';
+    }
   }
 }
 
