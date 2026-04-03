@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>QA — IR Lab (Render Persistent)</title>
+<title>IR Lab — Attack Simulation (Render - Persistent)</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -12,28 +12,33 @@
   --yellow:#facc15;--blue:#60a5fa;--accent:#1d4ed8;
 }
 body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-#hud{position:fixed;top:0;left:0;right:0;height:54px;background:#0a0a0a;
-  border-bottom:1px solid var(--border);display:flex;align-items:center;
-  justify-content:space-between;padding:0 20px;z-index:200}
-#clock{font-size:26px;font-weight:700;font-family:monospace;color:var(--green)}
-#pbar{position:fixed;top:54px;left:0;height:3px;background:var(--green);transition:width 1s linear;z-index:200}
-.hud-label{font-size:11px;color:var(--muted);text-transform:uppercase}
-.hud-btns{display:flex;gap:8px}
-.wrap{max-width:900px;margin:0 auto;padding:74px 20px 40px}
+#hud{position:fixed;top:0;left:0;right:0;background:#0a0a0a;
+  border-bottom:1px solid var(--border);z-index:200;padding:10px 20px;}
+.timer-container{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.timer-box{text-align:center;flex:1}
+.timer-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.timer-value{font-size:24px;font-weight:700;font-family:monospace}
+.timer-warning{font-size:9px;margin-top:2px}
+#investigation-timer{color:var(--green)}
+.button-group{display:flex;gap:8px}
+.btn{background:#1d4ed8;color:#fff;border:none;cursor:pointer;font-weight:500;padding:6px 14px;border-radius:6px;font-size:12px}
+.btn-ghost{background:#333;color:#fff}
+.btn-sm{padding:4px 10px}
+#pbar{position:fixed;top:105px;left:0;height:3px;background:var(--green);transition:width 1s linear;z-index:200}
+.wrap{max-width:1200px;margin:0 auto;padding:120px 20px 40px}
 .card{background:var(--surface);border:1px solid #2a2a2a;border-radius:8px;margin-bottom:16px}
 .card-head{padding:11px 18px;background:#161616;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center}
 .card-head h3{font-size:13px;font-weight:500;color:var(--muted)}
 .card-body{padding:18px}
 input, button{width:100%;margin-bottom:10px;padding:8px;border-radius:6px}
 input{background:#0a0a0a;border:1px solid #333;color:var(--text);font-family:monospace}
-.btn{background:#1d4ed8;color:#fff;border:none;cursor:pointer;font-weight:500}
 .btn-danger{background:#7f1d1d}
-.btn-ghost{background:#333;color:#fff}
-.btn-sm{padding:5px 12px;width:auto;margin-bottom:0}
+.btn-warning{background:#78350f;color:#fde68a}
 .rbox{background:#0a0a0a;border:1px solid #333;border-radius:6px;padding:11px;margin-top:10px;
-  font-family:monospace;font-size:11px;white-space:pre-wrap;display:none}
+  font-family:monospace;font-size:11px;white-space:pre-wrap;display:none;max-height:500px;overflow-y:auto}
 .rbox.err{color:var(--red)}
 .rbox.info{color:var(--blue)}
+.rbox.success{color:var(--green)}
 .hint{font-size:12px;color:var(--muted);margin-top:6px}
 .row{display:flex;gap:8px;align-items:center}
 .row button{width:auto}
@@ -43,20 +48,27 @@ input{background:#0a0a0a;border:1px solid #333;color:var(--text);font-family:mon
 .log-timestamp{color:var(--green)}
 .log-critical{color:var(--red)}
 .log-warning{color:var(--yellow)}
+.log-success{color:var(--green)}
+.persistent-badge{background:#0a2a1a;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:9px;margin-left:6px;border:1px solid #14532d}
 </style>
 </head>
 <body>
 
 <div id="hud">
-  <div>
-    <div class="hud-label">Incident Response Timer</div>
-    <div id="clock">25:00</div>
-  </div>
-  <div style="text-align:right">
-    <div class="hud-label">Render — Persistent Logs <span style="background:#14532d; padding:2px 8px; border-radius:4px; font-size:9px; margin-left:6px">persistent</span></div>
-    <div class="hud-btns">
-      <button class="btn btn-ghost btn-sm" onclick="resetTimer()">Reset</button>
-      <button class="btn btn-sm" id="tbtn" onclick="toggleTimer()">Start</button>
+  <div class="timer-container">
+    <div class="timer-box">
+      <div class="timer-label">Investigation Timer</div>
+      <div class="timer-value" id="investigation-timer">07:00</div>
+      <div class="timer-warning" id="investigation-warning"></div>
+    </div>
+    <div class="timer-box">
+      <div class="timer-label">Render - Persistent Server</div>
+      <div class="timer-value" style="color:#4ade80; font-size:16px;">LOGS PERSIST</div>
+      <div class="timer-warning" style="color:#4ade80;">No cold start - Evidence safe</div>
+    </div>
+    <div class="button-group">
+      <button class="btn btn-ghost btn-sm" onclick="resetInvestigationTimer()">Reset</button>
+      <button class="btn btn-sm" id="tbtn" onclick="toggleInvestigationTimer()">Start</button>
     </div>
   </div>
 </div>
@@ -65,57 +77,109 @@ input{background:#0a0a0a;border:1px solid #333;color:var(--text);font-family:mon
 <div class="wrap" id="app-view"></div>
 
 <script>
-// ========== TIMER FUNCTIONS ==========
-let remaining = 1500;
-let running = false;
-let iv = null;
+// ========== INVESTIGATION TIMER (7 minutes = 420 seconds) ==========
+let investigationRemaining = 420;
+let investigationRunning = false;
+let investigationIv = null;
+let attackerLeftShown = false;
 
 function pad(n) {
   return String(n).padStart(2, '0');
 }
 
-function drawTimer() {
-  const m = Math.floor(remaining / 60);
-  const s = remaining % 60;
-  document.getElementById('clock').textContent = pad(m) + ':' + pad(s);
-  const pct = (remaining / 1500) * 100;
-  document.getElementById('pbar').style.width = pct + '%';
-}
-
-function toggleTimer() {
-  running = !running;
-  document.getElementById('tbtn').textContent = running ? 'Pause' : 'Start';
-  if (running) {
-    iv = setInterval(() => {
-      if (remaining > 0) {
-        remaining--;
-        drawTimer();
-      } else {
-        clearInterval(iv);
-        running = false;
-        document.getElementById('tbtn').textContent = 'Start';
-      }
-    }, 1000);
+function drawTimers() {
+  const invM = Math.floor(investigationRemaining / 60);
+  const invS = investigationRemaining % 60;
+  const invEl = document.getElementById('investigation-timer');
+  invEl.textContent = pad(invM) + ':' + pad(invS);
+  
+  if (investigationRemaining < 60) {
+    invEl.style.color = '#f87171';
+    document.getElementById('investigation-warning').innerHTML = 'CRITICAL - Attacker will delete logs';
+    document.getElementById('investigation-warning').style.color = '#f87171';
+  } else if (investigationRemaining < 120) {
+    invEl.style.color = '#facc15';
+    document.getElementById('investigation-warning').innerHTML = 'Attacker preparing to delete logs';
+    document.getElementById('investigation-warning').style.color = '#facc15';
   } else {
-    clearInterval(iv);
+    invEl.style.color = '#4ade80';
+    document.getElementById('investigation-warning').innerHTML = '';
+  }
+  
+  const pct = (investigationRemaining / 420) * 100;
+  const pb = document.getElementById('pbar');
+  pb.style.width = pct + '%';
+  
+  if (investigationRemaining < 60) {
+    pb.style.background = '#f87171';
+  } else if (investigationRemaining < 120) {
+    pb.style.background = '#facc15';
+  } else {
+    pb.style.background = '#4ade80';
+  }
+  
+  if (investigationRemaining <= 180 && !attackerLeftShown && currentUser && currentUser.role === 'admin') {
+    attackerLeftShown = true;
+    showAttackerLeftMessage();
   }
 }
 
-function resetTimer() {
-  clearInterval(iv);
-  running = false;
-  remaining = 1500;
-  drawTimer();
+function showAttackerLeftMessage() {
+  addEvidence('ATTACKER ACTION', 'Attacker deleted traces and logged out. Investigation window closing.');
+  
+  const container = document.getElementById('server-logs-container');
+  if (container) {
+    container.innerHTML = '<div class="log-entry log-critical">LOGS DELETED BY ATTACKER - The attacker manually wiped the logs at the 4-minute mark</div>';
+  }
+  
+  addEvidence('EVIDENCE LOST', 'Attacker deleted server logs. In a real incident, critical evidence would be gone.');
+  
+  setTimeout(() => {
+    if (currentUser) {
+      alert('ATTACKER LEFT AND DELETED TRACES!\n\nThe attacker has completed their attack and wiped the logs. You are being logged out.\n\nNote: On Render, logs would persist normally, but the attacker manually deleted them.');
+      logout();
+    }
+  }, 2000);
+}
+
+function toggleInvestigationTimer() {
+  investigationRunning = !investigationRunning;
+  document.getElementById('tbtn').textContent = investigationRunning ? 'Pause' : 'Start';
+  if (investigationRunning) {
+    investigationIv = setInterval(() => {
+      if (investigationRemaining > 0) {
+        investigationRemaining--;
+        drawTimers();
+      } else {
+        clearInterval(investigationIv);
+        investigationRunning = false;
+        document.getElementById('tbtn').textContent = 'Start';
+        if (currentUser) {
+          alert('Investigation time is over. You are being logged out.');
+          logout();
+        }
+      }
+    }, 1000);
+  } else {
+    clearInterval(investigationIv);
+  }
+}
+
+function resetInvestigationTimer() {
+  clearInterval(investigationIv);
+  investigationRunning = false;
+  investigationRemaining = 420;
+  attackerLeftShown = false;
+  drawTimers();
   document.getElementById('tbtn').textContent = 'Start';
 }
 
-drawTimer();
+drawTimers();
 
 // ========== GLOBAL STATE ==========
 let currentUser = null;
 let evidenceLog = [];
 
-// ========== HELPER FUNCTIONS ==========
 function show(elementId, message, isError) {
   const el = document.getElementById(elementId);
   if (el) {
@@ -128,14 +192,17 @@ function show(elementId, message, isError) {
 function addEvidence(type, detail) {
   const now = new Date();
   const ts = now.toLocaleTimeString();
-  evidenceLog.push(`[${ts}] ${type}: ${detail}`);
+  const invMinutes = Math.floor(investigationRemaining / 60);
+  const invSeconds = investigationRemaining % 60;
+  const timeInfo = `Inv: ${invMinutes}:${pad(invSeconds)}`;
+  evidenceLog.push(`[${ts}] [${timeInfo}] ${type}: ${detail}`);
   updateEvidenceDisplay();
 }
 
 function updateEvidenceDisplay() {
   const elog = document.getElementById('elog');
   if (elog) {
-    elog.innerHTML = evidenceLog.map(log => `<div style="padding:4px 0; border-bottom:1px solid #1a1a1a; font-family:monospace; font-size:11px">${log}</div>`).join('');
+    elog.innerHTML = evidenceLog.map(log => `<div style="padding:4px 0; border-bottom:1px solid #1a1a1a; font-family:monospace; font-size:11px; white-space:pre-wrap">${log}</div>`).join('');
   }
 }
 
@@ -156,7 +223,6 @@ function exportEvidence() {
 async function doLogin() {
   const username = document.getElementById('l-user').value;
   const password = document.getElementById('l-pass').value;
-  const isLongPassword = password.length > 100;
   
   try {
     const response = await fetch('/api/login', {
@@ -166,22 +232,22 @@ async function doLogin() {
     });
     
     const data = await response.json();
-    show('l-box', `HTTP ${response.status}\n${JSON.stringify(data, null, 2)}`, !response.ok);
+    show('l-box', 'HTTP ' + response.status + '\n' + JSON.stringify(data, null, 2), !response.ok);
     
     if (response.ok) {
       currentUser = data.user;
-      if (isLongPassword) {
-        addEvidence('LOGIN SUCCESS', `User: ${username} (Role: ${data.user.role}) - Password used: "${password.substring(0, 50)}..." (${password.length} chars) - VULNERABILITY: Long password accepted!`);
-      } else {
-        addEvidence('LOGIN SUCCESS', `User: ${username} (Role: ${data.user.role}) - Password used: "${password}"`);
-      }
+      addEvidence('LOGIN SUCCESS', 'User: ' + username + ' (Role: ' + data.user.role + ') - Password used: "' + password + '"');
       renderAppView();
+      
+      if (!investigationRunning) {
+        toggleInvestigationTimer();
+      }
     } else {
-      addEvidence('LOGIN FAILED', `User: ${username} - Password: "${password}" - Error: ${data.error}`);
+      addEvidence('LOGIN FAILED', 'User: ' + username + ' - Password: "' + password + '" - Error: ' + data.error);
     }
   } catch (error) {
     console.error('Login error:', error);
-    show('l-box', 'Error: ' + error.message + '\n\nMake sure the backend API is deployed!', true);
+    show('l-box', 'Error: ' + error.message, true);
   }
 }
 
@@ -197,9 +263,9 @@ async function doRegister() {
       body: JSON.stringify({ username, email, password })
     });
     const data = await response.json();
-    show('r-box', `HTTP ${response.status}\n${JSON.stringify(data, null, 2)}`, !response.ok);
+    show('r-box', 'HTTP ' + response.status + '\n' + JSON.stringify(data, null, 2), !response.ok);
     if (response.ok) {
-      addEvidence('REGISTRATION', `New user: ${username} - Password: "${password}" (stored in plaintext!)`);
+      addEvidence('REGISTRATION', 'New user: ' + username + ' - Password: "' + password + '" (stored in plaintext)');
     }
   } catch (error) {
     show('r-box', 'Error: ' + error.message, true);
@@ -218,22 +284,14 @@ async function doProfile(userId) {
     const data = await response.json();
     
     if (document.getElementById('p-box')) {
-      show('p-box', `HTTP ${response.status}\n${JSON.stringify(data, null, 2)}`, !response.ok);
-    }
-    if (document.getElementById('admin-result')) {
-      const resultBox = document.getElementById('admin-result');
-      resultBox.style.display = 'block';
-      resultBox.textContent = JSON.stringify(data, null, 2);
+      show('p-box', 'HTTP ' + response.status + '\n' + JSON.stringify(data, null, 2), !response.ok);
     }
     
     if (response.ok) {
-      addEvidence('USER LOOKUP', `Viewed user ID ${id}: ${data.username} - Password: "${data.password}" - Salary: $${data.salary}`);
-    } else {
-      addEvidence('USER LOOKUP FAILED', `User ID ${id} not found`);
+      addEvidence('IDOR EXPLOIT', 'Viewed user ID ' + id + ': ' + data.username + ' - Password: "' + data.password + '" - Credit Card: ' + (data.credit_card || 'N/A') + ' - SSN: ' + (data.ssn || 'N/A'));
     }
   } catch (error) {
     if (document.getElementById('p-box')) show('p-box', 'Error: ' + error.message, true);
-    else alert('Error: ' + error.message);
   }
 }
 
@@ -241,18 +299,113 @@ async function doAudit() {
   try {
     const response = await fetch('/api/audit');
     const data = await response.json();
-    show('a-box', `HTTP ${response.status}\nTotal Logs: ${data.totalEntries}\nServer Uptime: ${data.serverUptime}\n\n${JSON.stringify(data.log, null, 2)}`, false);
-    addEvidence('AUDIT LOG ACCESS', `Retrieved ${data.totalEntries} log entries - No authentication required! Server uptime: ${data.serverUptime}`);
+    show('a-box', 'HTTP ' + response.status + '\nTotal Logs: ' + (data.total || 0) + '\n\n' + JSON.stringify(data.log || [], null, 2), false);
+    addEvidence('AUDIT LOG ACCESS', 'Retrieved ' + (data.total || 0) + ' log entries - No authentication required');
   } catch (error) {
     show('a-box', 'Error: ' + error.message, true);
   }
 }
 
+// ========== ATTACK SIMULATION ==========
+async function simulateFullAttack() {
+  addEvidence('ATTACK SIMULATION', 'Malware attack triggered');
+  
+  try {
+    const response = await fetch('/api/attack', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'full_attack', target: 'all' })
+    });
+    
+    const data = await response.json();
+    
+    if (data.formatted_attack_log) {
+      const attackLines = data.formatted_attack_log.split('\n');
+      for (let i = 0; i < attackLines.length; i++) {
+        let line = attackLines[i];
+        if (line.trim().length > 0) {
+          const shouldSkip = line.includes('ATTACK SUMMARY') || 
+                            line.includes('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━') ||
+                            line.includes('Total users compromised') ||
+                            line.includes('Passwords stolen') ||
+                            line.includes('Credit cards stolen') ||
+                            line.includes('SSNs stolen') ||
+                            line.includes('Backdoor account created') ||
+                            line.includes('Audit logs stolen') ||
+                            line.includes('Vulnerabilities exploited') ||
+                            line.includes('STOLEN DATA SUMMARY') ||
+                            line.includes('BACKDOOR ACCOUNT') ||
+                            line.includes('SECURITY RECOMMENDATIONS') ||
+                            line.includes('RECOMMENDATION') ||
+                            line.includes('ATTACK COMPLETE') ||
+                            line.includes('ATTACK DETAIL') ||
+                            line.includes('ATTACK STARTED');
+          
+          if (!shouldSkip) {
+            line = line.replace('🔍 STEP 1: Attacker starts reconnaissance - trying common passwords', 'Reconnaissance: Trying common passwords');
+            line = line.replace('💥 STEP 2: Attacker tries buffer overflow attack with long string of A\'s', 'Buffer overflow attack with long string of As');
+            line = line.replace('✅ SUCCESS! Password "', 'SUCCESS - Password: ');
+            line = line.replace('" (10000 chars) was accepted!', ' (10000 characters) was accepted');
+            line = line.replace('🔴 VULNERABILITY: No input validation on password length', 'VULNERABILITY: No input validation on password length');
+            line = line.replace('✅ Logged in as admin using buffer overflow attack!', 'LOGIN SUCCESS: User: admin (Role: admin) - Password used: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...');
+            line = line.replace('📁 STEP 3: Attacker exploits IDOR vulnerability to steal user data', 'IDOR exploitation to steal user data');
+            line = line.replace('📋 STEP 4: Attacker accesses internal audit log', 'Accessing internal audit log');
+            line = line.replace('🎫 STEP 5: Attacker checks for active sessions', 'Checking for active sessions');
+            line = line.replace('🚪 STEP 6: Attacker creates backdoor admin account for persistent access', 'Creating backdoor admin account');
+            line = line.replace('🔓 STEP 7: Attacker attempts to crack passwords via brute force', 'Brute force password cracking');
+            line = line.replace('💾 STEP 8: Attacker packages stolen data for exfiltration', 'Packaging stolen data for exfiltration');
+            line = line.replace('  ✅ Retrieved', 'Retrieved');
+            line = line.replace('  ✅ Found', 'Found');
+            line = line.replace('  ✅ Backdoor account created:', 'Backdoor account created:');
+            line = line.replace('  ✅ CRACKED!', 'CRACKED:');
+            line = line.replace('  ❌ Attempted password:', 'Attempted password:');
+            line = line.replace('  📋 User ID', 'User ID');
+            line = line.replace('     → Password:', '- Password:');
+            line = line.replace('     → Credit Card:', '- Credit Card:');
+            line = line.replace('     → SSN:', '- SSN:');
+            line = line.replace('     → Salary:', '- Salary:');
+            
+            line = line.replace(/[^\w\s\:\-\.\,\$\(\)]/g, '');
+            
+            if (line.trim().length > 0) {
+              addEvidence('', line);
+            }
+          }
+        }
+      }
+    }
+    
+    const resultBox = document.getElementById('attack-result');
+    if (resultBox) {
+      resultBox.style.display = 'block';
+      resultBox.innerHTML = 'Attack completed successfully. Check the Evidence Log for details.';
+      resultBox.className = 'rbox success';
+      setTimeout(function() {
+        resultBox.style.display = 'none';
+      }, 3000);
+    }
+    
+    setTimeout(function() {
+      if (currentUser && currentUser.role === 'admin') {
+        fetchServerLogs();
+      }
+    }, 1000);
+    
+  } catch (error) {
+    addEvidence('ATTACK FAILED', 'Error: ' + error.message);
+  }
+}
+
 // ========== ADMIN FUNCTIONS ==========
 function logout() {
+  addEvidence('LOGOUT', 'User logged out. Investigation session ended.');
   currentUser = null;
   evidenceLog = [];
   renderAppView();
+  if (investigationRunning) {
+    toggleInvestigationTimer();
+  }
+  resetInvestigationTimer();
 }
 
 async function fetchServerLogs() {
@@ -262,23 +415,27 @@ async function fetchServerLogs() {
     const container = document.getElementById('server-logs-container');
     if (container && data.log) {
       if (data.log.length === 0) {
-        container.innerHTML = '<div class="log-entry">⚠️ No logs found. Make some login attempts first!</div>';
+        container.innerHTML = '<div class="log-entry">No logs found. Click the attack button to generate evidence.</div>';
       } else {
-        container.innerHTML = data.log.map(log => {
+        container.innerHTML = data.log.map(function(log) {
           let logClass = '';
-          if (log.type === 'BUFFER_OVERFLOW_ATTEMPT') logClass = 'log-critical';
-          else if (log.type === 'LOGIN_SUCCESS') logClass = 'log-warning';
+          if (log.type && (log.type.includes('ATTACK') || log.type === 'DATA_EXFILTRATION')) logClass = 'log-critical';
+          else if (log.type && (log.type.includes('SUCCESS') || log.type === 'BACKDOOR_CREATED')) logClass = 'log-warning';
+          else if (log.type === 'LOGIN_SUCCESS') logClass = 'log-success';
+          
+          let detailDisplay = JSON.stringify(log.detail, null, 2);
+          if (detailDisplay.length > 200) detailDisplay = detailDisplay.substring(0, 200) + '...';
+          
           return `
             <div class="log-entry ${logClass}">
               <span class="log-timestamp">[${new Date(log.ts).toLocaleTimeString()}]</span>
-              <strong>${log.type}</strong><br>
-              <span style="color:#6b7280; font-size:9px">${JSON.stringify(log.detail, null, 2)}</span><br>
-              <span style="color:#4b5563; font-size:9px">IP: ${log.ip}</span>
+              <strong>${log.type || 'UNKNOWN'}</strong><br>
+              <span style="color:#6b7280; font-size:9px">${detailDisplay}</span>
             </div>
           `;
         }).join('');
       }
-      addEvidence('LOGS FETCHED', `Retrieved ${data.log.length} log entries from server (persistent!)`);
+      addEvidence('LOGS REFRESHED', 'Retrieved ' + data.log.length + ' log entries');
     }
   } catch (error) {
     console.error('Failed to fetch logs:', error);
@@ -288,13 +445,31 @@ async function fetchServerLogs() {
 // ========== RENDER VIEWS ==========
 function renderLoginView() {
   return `
-    <div style="max-width:500px;margin:0 auto">
+    <div style="max-width:600px;margin:0 auto">
+      <div class="card" style="border-color: #dc2626; margin-bottom: 20px;">
+        <div class="card-head" style="background: rgba(220, 38, 38, 0.2);">
+          <h3 style="color: #fca5a5;">MALWARE SIMULATION - Click to see attack in action</h3>
+        </div>
+        <div class="card-body">
+          <p style="color: #fca5a5; margin-bottom: 15px; font-size: 14px;">
+            This button simulates a real malware attack that exploits multiple vulnerabilities. Click it to see the attack in action.
+          </p>
+          
+          <button class="btn" onclick="simulateFullAttack()" style="background: #dc2626; padding: 12px; font-size: 16px; font-weight: bold;">
+            SIMULATE FULL ATTACK
+          </button>
+          
+          <div id="attack-result" class="rbox" style="display: none; margin-top: 15px;"></div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-head"><h3>Login</h3></div>
         <div class="card-body">
           <input type="text" id="l-user" placeholder="Username" value="admin">
           <input type="password" id="l-pass" placeholder="Password">
           <button class="btn" onclick="doLogin()">Sign In</button>
+          <p class="hint">Use "password123" for admin access</p>
           <div class="rbox" id="l-box"></div>
         </div>
       </div>
@@ -322,19 +497,19 @@ function renderAdminView() {
           <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
         </div>
         <div class="card-body">
-          <p>Welcome, ${currentUser?.username}!</p>
-          <p class="hint" style="color:var(--green)">✅ On Render, logs are PERSISTENT - they accumulate until server restart!</p>
+          <p>Welcome, ${currentUser ? currentUser.username : 'Admin'}!</p>
+          <p class="hint" style="color:var(--green)">Render: Persistent server - Logs survive until manually cleared or attacker deletes them</p>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><h3>User Lookup (IDOR)</h3></div>
+        <div class="card-head"><h3>User Lookup (IDOR Vulnerability)</h3></div>
         <div class="card-body">
           <div class="row">
             <input type="number" id="p-id" placeholder="User ID (1, 2, 3, 4)" style="margin-bottom:0">
             <button class="btn" onclick="doProfile()" style="width:auto">Lookup User</button>
           </div>
-          <p class="hint">No authentication required! Try IDs 1-4</p>
+          <p class="hint">No authentication required. Try IDs 1-4 to see credit cards and SSNs</p>
           <div class="rbox" id="p-box"></div>
         </div>
       </div>
@@ -343,14 +518,14 @@ function renderAdminView() {
         <div class="card-head"><h3>Audit Log (No Authentication)</h3></div>
         <div class="card-body">
           <button class="btn btn-danger" onclick="doAudit()">Access /api/audit</button>
-          <p class="hint">🔴 On Render, this shows EVERY request since server started!</p>
+          <p class="hint">Internal audit log exposed with no authentication</p>
           <div class="rbox" id="a-box"></div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-head">
-          <h3>Server Logs (Persistent - Render)</h3>
+          <h3>Server Logs (Attack Evidence)</h3>
           <div>
             <button class="btn btn-ghost btn-sm" onclick="clearEvidence()">Clear Evidence</button>
             <button class="btn btn-sm" onclick="exportEvidence()" style="margin-left:5px">Export</button>
@@ -359,9 +534,8 @@ function renderAdminView() {
         <div class="card-body">
           <button class="btn" onclick="fetchServerLogs()" style="margin-bottom:10px">Refresh Logs</button>
           <div id="server-logs-container" class="log-viewer">
-            <div class="log-entry">Click "Refresh Logs" to fetch persistent logs from the API</div>
+            <div class="log-entry">Click "Refresh Logs" - Attack evidence will appear here after simulation</div>
           </div>
-          <p class="hint">✅ Unlike Vercel, these logs persist for the life of the server! Try registering a user, then check back later.</p>
         </div>
       </div>
 
@@ -370,8 +544,8 @@ function renderAdminView() {
           <h3>Evidence Log</h3>
         </div>
         <div class="card-body">
-          <div id="elog" class="log-viewer" style="max-height:300px">
-            ${evidenceLog.map(log => `<div style="padding:4px 0; border-bottom:1px solid #1a1a1a; font-family:monospace; font-size:11px">${log}</div>`).join('') || '<div>No evidence collected yet</div>'}
+          <div id="elog" class="log-viewer" style="max-height:400px; font-family:monospace; font-size:11px">
+            ${evidenceLog.length > 0 ? evidenceLog.map(log => `<div style="padding:4px 0; border-bottom:1px solid #1a1a1a; white-space:pre-wrap">${log}</div>`).join('') : '<div>No evidence collected yet - Click "SIMULATE FULL ATTACK" to begin</div>'}
           </div>
         </div>
       </div>
@@ -389,7 +563,6 @@ function renderAppView() {
   }
 }
 
-// Initial render
 renderAppView();
 </script>
 </body>
